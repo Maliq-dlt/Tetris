@@ -5,7 +5,7 @@
 
 import { ActivePiece, TetrominoType } from './types';
 import { BOARD_HEIGHT, BOARD_WIDTH, VISIBLE_START_ROW } from './constants';
-import { getPieceBlocks } from './piece';
+import { calculateGhostY, getPieceBlocks } from './piece';
 
 export type CellValue = TetrominoType | 'GARBAGE' | 'LEAD' | null;
 
@@ -158,9 +158,26 @@ export class Board {
     return false;
   }
 
-  /**
-   * Removes top N rows of the stack (for Second Chance relic)
-   */
+  public getBlastTarget(piece: ActivePiece): { x: number; y: number } {
+    const blocks = getPieceBlocks(piece, 0, calculateGhostY(piece, this.isCellBlocked) - piece.y);
+    return {
+      x: Math.round((Math.min(...blocks.map(p => p.x)) + Math.max(...blocks.map(p => p.x))) / 2),
+      y: Math.min(BOARD_HEIGHT - 1, Math.max(...blocks.map(p => p.y)) + 1)
+    };
+  }
+
+  /** Removes settled cells only; no gravity, line credit, or perfect-clear bonus. */
+  public blast(x: number, y: number): number {
+    if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT) return 0;
+    let removed = 0;
+    for (let r = Math.max(0, y - 1); r <= Math.min(BOARD_HEIGHT - 1, y + 1); r++) {
+      for (let c = Math.max(0, x - 1); c <= Math.min(BOARD_WIDTH - 1, x + 1); c++) {
+        if (this.grid[r][c] !== null) { this.grid[r][c] = null; removed++; }
+      }
+    }
+    return removed;
+  }
+
   public clearBottomRows(count: number): void {
     const rows = Math.max(0, Math.min(BOARD_HEIGHT, Math.floor(count)));
     this.grid.splice(BOARD_HEIGHT - rows, rows);

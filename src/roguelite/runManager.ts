@@ -4,8 +4,9 @@
  */
 
 import { DEFAULT_LOCK_DELAY_MS, DEFAULT_MAX_LOCK_RESETS } from '../core/constants';
-import { GameMode, RelicDefinition, RunStats, SoloRules, StageInfo, TetrominoType } from '../core/types';
-import { getRandomRelicChoices } from './relics';
+import { CardTrigger, GameMode, RelicDefinition, RunStats, SoloRules, StageInfo, StarterBuild, TetrominoType, TSpinResult } from '../core/types';
+import { calculateClearScore } from '../core/scoring';
+import { ALL_RELICS, getRandomRelicChoices } from './relics';
 import { generateStage } from './stage';
 
 const STORAGE_KEY_HIGH_SCORE = 'vitrail_tetris_highscore';
@@ -19,6 +20,11 @@ export class RunManager {
   public rerollCost = 2;
   public shopReceipt = 'Modal awal $8. Pilih build, atau simpan untuk bunga.';
   public repairBought = false;
+  public starterBuild: StarterBuild | null = null;
+  public comboRescueUsed = false;
+  public blastCharge = 0;
+  public contract: 'off' | 'active' | 'won' | 'lost' = 'off';
+  public contractProgress = 0;
   private paidStage = 0;
   private stageStartScore = 0;
   public rules: SoloRules = { targetLines: 40, timeLimitMs: 0, level: 1 };
@@ -81,6 +87,11 @@ export class RunManager {
     this.rerollCost = 2;
     this.shopReceipt = 'Modal awal $8. Pilih build, atau simpan untuk bunga.';
     this.repairBought = false;
+    this.starterBuild = null;
+    this.comboRescueUsed = false;
+    this.blastCharge = 0;
+    this.contract = 'off';
+    this.contractProgress = 0;
     this.elapsedMs = 0;
     this.pieces = 0;
     this.bestSprintMs = 0;
@@ -91,6 +102,8 @@ export class RunManager {
     this.stage = generateStage(1);
     if (mode !== 'roguelite') {
       this.stage.name = { sprint: '40 LINES', blitz: 'BLITZ', zen: 'ZEN', custom: 'CUSTOM' }[mode];
+      this.stage.targetType = 'lines';
+      this.stage.pieceLimit = 0;
       this.stage.targetValue = this.rules.targetLines;
     }
     this.relics = [];
@@ -142,6 +155,7 @@ export class RunManager {
 
   public addLines(count: number): boolean {
     this.stats.lines += count;
+    if (this.stage.targetType !== 'lines') return false;
     this.stage.currentProgress += count;
 
     if (this.stage.targetValue > 0 && this.stage.currentProgress >= this.stage.targetValue && !this.stage.cleared) {
@@ -150,6 +164,100 @@ export class RunManager {
       return true; // Chamber cleared!
     }
     return false;
+  }
+
+  public chooseStarter(build: string): boolean {
+    const ids = { combo: 'safety_net', demolition: 'blast_core', gambler: 'double_or_nothing' };
+    if (!Object.hasOwn(ids, build) || !this.shopOpen || this.stage.number !== 1 || this.pieces !== 0 || this.starterBuild || this.relics.length >= this.cardSlots) return false;
+    this.starterBuild = build as StarterBuild;
+    this.addRelic(ALL_RELICS.find(r => r.id === ids[build as StarterBuild])!);
+    return true;
+  }
+
+  public acceptContract(): boolean {
+    if (!this.shopOpen || !this.hasRelic('double_or_nothing') || this.contract !== 'off') return false;
+    this.contract = 'active';
+    return true;
+  }
+
+  public recordPlacement(): void {
+    this.pieces++;
+    if (this.mode === 'roguelite') this.stage.piecesUsed++;
+  }
+
+  /** Drop points stay in the total score, but only clear/bomb/contract points meet the stage target. */
+  public addClearScore(points: number): void {
+    if (!Number.isFinite(points) || points < 0 || this.stage.cleared) return;
+    this.addScore(Math.floor(points));
+    if (this.mode === 'roguelite') this.stage.currentProgress += Math.floor(points);
+  }
+
+  public finishPlacement(): 'cleared' | 'failed' | null {
+    if (this.mode !== 'roguelite' || this.stage.cleared || this.shopOpen) return null;
+    if (this.stage.currentProgress >= this.stage.targetValue) {
+      this.stage.cleared = true;
+      this.stats.chambersCleared++;
+      return 'cleared';
+    }
+    return this.stage.piecesUsed >= this.stage.pieceLimit ? 'failed' : null;
+  }
+
+  public scorePlacement(lines: number, tspin: TSpinResult, perfect: boolean) {
+    const triggers: CardTrigger[] = [];
+    const trigger = (id: string, text: string) => { if (this.hasRelic(id)) triggers.push({ id, text }); };
+    if (lines > 0) this.stats.currentCombo++;
+    else if (this.mode === 'roguelite' && this.stats.currentCombo > 0 && this.hasRelic('safety_net') && !this.comboRescueUsed) {
+      this.comboRescueUsed = true;
+      trigger('safety_net', 'Combo terselamatkan · 1× per stage');
+    } else this.stats.currentCombo = 0;
+    this.stats.maxCombo = Math.max(this.stats.maxCombo, this.stats.currentCombo);
+    const prism = this.registerPrismClear(lines, this.stats.currentCombo);
+    // A rescued chain retains its next bonus without scoring an empty placement.
+    const result = calculateClearScore(lines, tspin, this.level, this.stats.b2bStreak > 0,
+      lines > 0 ? Math.max(0, this.stats.currentCombo - 1) : 0, perfect,
+      this.getEffectiveB2BMultiplier(), this.getEffectiveComboBonus(), this.getEffectiveScoreMultiplier() * prism.multiplier);
+    if (tspin !== 'none' && this.hasRelic('martyrs_shard')) { result.finalScore *= 2; trigger('martyrs_shard', 'T-spin ×2'); }
+    if (lines === 1 && tspin === 'none' && this.hasRelic('martyrs_shard')) { result.finalScore = 0; trigger('martyrs_shard', 'Single · 0 skor'); }
+    if (perfect && this.hasRelic('crucible_of_light')) { result.finalScore += 10000; trigger('crucible_of_light', 'Perfect clear +10.000'); }
+    if (result.finalScore > 0) for (const card of this.relics) {
+      if (card.effects.scoreMultiplier) trigger(card.id, `Skor ×${card.effects.scoreMultiplier}`);
+      if (card.effects.scorePerRelic) trigger(card.id, `Koleksi +${Math.round(card.effects.scorePerRelic * this.relics.length * 100)}%`);
+      if (card.effects.lowWalletMultiplier && this.coins < 3) trigger(card.id, 'Saldo rendah · ×2');
+      if (lines > 0 && this.stats.currentCombo > 1 && card.effects.comboBonusFlat) trigger(card.id, `Combo ${this.stats.currentCombo}`);
+      if (lines > 0 && result.isDifficultClear && this.stats.b2bStreak > 0 && card.effects.b2bScoreMultiplier) trigger(card.id, 'B2B ×2,2');
+    }
+    this.addClearScore(result.finalScore);
+    const coins = this.awardClearCoins(lines, this.stats.currentCombo);
+    if (lines > 0) for (const card of this.relics) {
+      const earned = (card.effects.coinsPerClear ?? 0) + (this.stats.currentCombo >= 3 ? card.effects.comboCoins ?? 0 : 0);
+      if (earned) trigger(card.id, `+$${earned}`);
+    }
+    if (lines > 0 && this.hasRelic('blast_core')) {
+      const wasReady = this.blastCharge === 6;
+      this.blastCharge = Math.min(6, this.blastCharge + lines);
+      trigger('blast_core', !wasReady && this.blastCharge === 6 ? 'BOM SIAP · tekan B' : `Energi ${this.blastCharge}/6`);
+    }
+    if (this.contract === 'active' && lines >= 2) {
+      this.contractProgress++;
+      trigger('double_or_nothing', `Kontrak ${this.contractProgress}/3`);
+      if (this.contractProgress === 3) {
+        this.contract = 'won';
+        this.addClearScore(1200 * this.level);
+        this.coins += 4;
+        trigger('double_or_nothing', `MENANG · +${1200 * this.level} skor · +$4`);
+      }
+    }
+    return { ...result, prism, coins, triggers };
+  }
+
+  public detonateBlast(destroy: () => number): number {
+    if (this.mode !== 'roguelite' || this.shopOpen || !this.hasRelic('blast_core') || this.blastCharge < 6 || this.stage.cleared) return 0;
+    const removed = destroy();
+    if (removed <= 0) return 0;
+    this.blastCharge = 0;
+    const score = removed * 40 * this.level;
+    this.addClearScore(score);
+    return score;
   }
 
   public finishSprint(): boolean {
@@ -166,6 +274,10 @@ export class RunManager {
     this.stageStartScore = this.stats.score;
     this.stage = generateStage(this.stage.number + 1);
     this.periodicGarbageElapsed = 0;
+    this.comboRescueUsed = false;
+    this.contract = 'off';
+    this.contractProgress = 0;
+    this.stats.currentCombo = 0;
   }
 
   /** Fever lasts for eight cleared lines; a placement without a clear cools charge. */
@@ -220,7 +332,7 @@ export class RunManager {
 
   public buyCard(index: number): boolean {
     const card = Number.isInteger(index) ? this.shopOffers[index] : null;
-    if (!this.shopOpen || !card || this.coins < card.price || this.relics.length >= this.cardSlots || this.hasRelic(card.id)) return false;
+    if (!this.shopOpen || !this.starterBuild || !card || this.coins < card.price || this.relics.length >= this.cardSlots || this.hasRelic(card.id)) return false;
     this.coins -= card.price;
     this.addRelic(card);
     this.shopOffers[index] = null;
@@ -229,7 +341,7 @@ export class RunManager {
 
   public sellCard(id: string): boolean {
     const card = this.relics.find(r => r.id === id);
-    if (!this.shopOpen || !card) return false;
+    if (!this.shopOpen || !card || card.price === 0) return false;
     this.coins += Math.floor(card.price / 2);
     this.relics = this.relics.filter(r => r.id !== id);
     this.stats.relicsCollected = [...this.relics];
@@ -237,7 +349,7 @@ export class RunManager {
   }
 
   public rerollShop(): boolean {
-    if (!this.shopOpen || this.coins < this.rerollCost) return false;
+    if (!this.shopOpen || !this.starterBuild || this.coins < this.rerollCost) return false;
     this.coins -= this.rerollCost++;
     this.rollOffers();
     return true;
@@ -251,7 +363,7 @@ export class RunManager {
   }
 
   public closeShop(): boolean {
-    if (!this.shopOpen) return false;
+    if (!this.shopOpen || !this.starterBuild) return false;
     this.shopOpen = false;
     this.shopOffers = [];
     return true;
@@ -270,6 +382,7 @@ export class RunManager {
 
   public settleStage(): boolean {
     if (this.mode !== 'roguelite' || !this.stage.cleared || this.paidStage === this.stage.number) return false;
+    if (this.contract === 'active') { this.contract = 'lost'; this.coins = Math.max(0, this.coins - 3); }
     const base = 5 + this.stage.number;
     const scoreBonus = Math.min(8, Math.floor(Math.max(0, this.stats.score - this.stageStartScore) / 2000));
     const cap = 5 + this.relics.reduce((sum, r) => sum + (r.effects.interestCapBonus ?? 0), 0);
@@ -278,7 +391,7 @@ export class RunManager {
     const total = base + scoreBonus + interest + cards;
     this.coins += total;
     this.paidStage = this.stage.number;
-    this.shopReceipt = `Ronde ${this.stage.number} +$${base} · skor +$${scoreBonus} · bunga +$${interest} · kartu +$${cards} = +$${total}`;
+    this.shopReceipt = `${this.contract === 'lost' ? 'Kontrak gagal −$3 (sebatas saldo) · ' : ''}Ronde ${this.stage.number} +$${base} · skor +$${scoreBonus} · bunga +$${interest} · kartu +$${cards} = +$${total}`;
     return true;
   }
 

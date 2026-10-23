@@ -7,20 +7,17 @@ import { StageInfo } from '../core/types';
 import { getRandomModifier } from './modifiers';
 
 export function generateStage(stageNumber: number): StageInfo {
-  // Stage 1 is always 10 lines. Subsequent stages scale lines: 10, 12, 14, 16, 18, 20...
-  const baseLines = 8 + stageNumber * 2;
   const modifier = getRandomModifier(stageNumber);
-
-  // Apply modifier multiplier if applicable (e.g. Echoing Bells)
-  const targetMultiplier = modifier.effects.targetMultiplier || 1.0;
-  const targetValue = Math.round(baseLines * targetMultiplier);
+  const targetValue = Math.round(1500 * stageNumber ** 1.5 * (modifier.effects.targetMultiplier || 1));
 
   return {
     number: stageNumber,
     name: `Stage ${stageNumber}`,
-    targetType: 'lines',
+    targetType: 'score',
     targetValue,
     currentProgress: 0,
+    pieceLimit: 40,
+    piecesUsed: 0,
     modifier,
     cleared: false
   };

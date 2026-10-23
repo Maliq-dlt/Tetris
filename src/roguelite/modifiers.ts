@@ -80,7 +80,7 @@ export const STAGE_MODIFIERS: StageModifierDefinition[] = [
     id: 'echoing_bells',
     name: 'Target ekstra',
     tag: 'TRIAL',
-    description: 'Target baris bertambah 50%.',
+    description: 'Target skor bertambah 50%.',
     effects: {
       targetMultiplier: 1.5
     }

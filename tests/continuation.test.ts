@@ -161,8 +161,10 @@ describe('Sprint 40 lifecycle using real board clears', () => {
     expect(run.bestSprintMs).toBe(59000);
     run.resetRun('roguelite');
     expect([run.elapsedMs, run.pieces, run.prismCharge]).toEqual([0, 0, 0]);
-    expect(run.stage.targetValue).toBe(10);
-    expect(run.addLines(10)).toBe(true);
+    expect(run.stage.targetType).toBe('score');
+    expect(run.addLines(10)).toBe(false);
+    run.addClearScore(run.stage.targetValue);
+    expect(run.finishPlacement()).toBe('cleared');
     expect(run.stats.chambersCleared).toBe(1);
     expect(formatTime(60001)).toBe('1:00.001');
   });
@@ -197,6 +199,7 @@ describe('roguelite market and build lifecycle', () => {
     expect(run.buyCard(0)).toBe(false);
     expect(run.openShop()).toBe(true);
     expect(run.openShop()).toBe(false);
+    run.chooseStarter('combo');
     expect(run.shopOffers.some(r => r && r.price <= run.coins)).toBe(true);
     run.shopOffers = [card('coin_press'), card('heavy_lead_cane'), card('coin_press')];
     expect(run.buyCard(NaN)).toBe(false);
@@ -215,14 +218,15 @@ describe('roguelite market and build lifecycle', () => {
     expect(run.sellCard('coin_press')).toBe(true);
     expect(run.coins).toBe(10);
     expect(run.sellCard('coin_press')).toBe(false);
-    expect(run.stats.relicsCollected).toHaveLength(0);
+    expect(run.stats.relicsCollected.map(r => r.id)).toEqual(['safety_net']);
     run.closeShop();
     expect(run.sellCard('payday')).toBe(false);
     expect(run.rerollShop()).toBe(false);
   });
   it('plays real board clears, settles only once, and carries the build into the next market', () => {
     const run = new RunManager();
-    run.openShop(); run.shopOffers = [card('coin_press')]; run.buyCard(0); run.closeShop();
+    run.openShop(); run.chooseStarter('combo'); run.shopOffers = [card('coin_press')]; run.buyCard(0); run.closeShop();
+    run.stage.targetValue = 12000;
     const board = new Board();
     for (let turn = 0; turn < 3; turn++) {
       for (let y = 20; y < 24; y++) for (let x = 0; x < 9; x++) board.grid[y][x] = 'J';
@@ -230,8 +234,9 @@ describe('roguelite market and build lifecycle', () => {
       board.lockPiece(piece);
       const lines = board.clearFullLines().length;
       run.awardClearCoins(lines, turn + 1);
-      run.addScore(4000);
-      expect(run.addLines(lines)).toBe(turn === 2);
+      run.recordPlacement(); run.addClearScore(4000);
+      expect(run.addLines(lines)).toBe(false);
+      expect(run.finishPlacement()).toBe(turn === 2 ? 'cleared' : null);
     }
     expect(run.coins).toBe(6);
     expect(run.settleStage()).toBe(true);
@@ -258,8 +263,9 @@ describe('roguelite market and build lifecycle', () => {
     expect(run.buyCard(0)).toBe(false);
     run.addRelic(card('prophets_window'));
     expect(run.relics).toHaveLength(6);
-    run.addLines(10); run.settleStage();
-    expect(run.coins).toBe(69); // $6 base + $10 capped interest + $3 Payday.
+    run.shopOpen = false;
+    run.addClearScore(run.stage.targetValue); run.finishPlacement(); run.settleStage();
+    expect(run.coins).toBe(69); // $6 base + $10 capped interest + $3 Payday; target below 2,000.
     run.resetRun('sprint');
     expect(run.openShop()).toBe(false);
     expect(run.coins).toBe(0);

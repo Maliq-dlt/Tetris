@@ -2,7 +2,7 @@
  * VITRAIL: Stained Glass Tetris Roguelite
  * Master UI & DOM Manager
  */
-import { GameMode, RelicDefinition, RunStats, StageInfo, TetrominoType } from '../core/types';
+import { CardTrigger, GameMode, RelicDefinition, RunStats, StageInfo, TetrominoType } from '../core/types';
 import { Renderer } from '../render/renderer';
 import { SpriteCache } from '../render/spriteCache';
 import type { RunManager } from '../roguelite/runManager';
@@ -128,9 +128,13 @@ export class UiManager {
   public updateHud(stage: StageInfo, stats: RunStats, level: number): void {
     this.hudStageNum.innerText = stage.number.toString();
     this.hudStageName.innerText = stage.name;
-    this.hudGoalDesc.innerText = stage.targetValue ? `Hapus ${stage.targetValue} baris` : this.timeLimitMs ? 'Raih skor tertinggi' : 'Latihan tanpa batas';
+    this.hudGoalDesc.innerText = stage.targetType === 'score' ? 'SKOR STAGE' : stage.targetValue ? `Hapus ${stage.targetValue} baris` : this.timeLimitMs ? 'Raih skor tertinggi' : 'Latihan tanpa batas';
     document.getElementById('hud-next-count-badge')!.textContent = String(this.nextCanvases.length);
-    this.hudGoalCounter.innerText = stage.targetValue ? `${stage.currentProgress} / ${stage.targetValue}` : this.timeLimitMs ? `${this.timeLimitMs / 1000} detik` : '∞';
+    this.hudGoalCounter.innerText = stage.targetValue ? `${stage.currentProgress.toLocaleString()} / ${stage.targetValue.toLocaleString()}` : this.timeLimitMs ? `${this.timeLimitMs / 1000} detik` : '∞';
+    const budget = document.getElementById('hud-piece-budget')!;
+    const left = Math.max(0, stage.pieceLimit - stage.piecesUsed);
+    budget.textContent = `SISA ${left} / ${stage.pieceLimit} BALOK`;
+    budget.classList.toggle('budget-low', left <= 5);
     const pct = Math.min(100, Math.round(stage.targetValue ? (stage.currentProgress / stage.targetValue) * 100 : 0));
     this.hudGoalProgress.style.width = `${pct}%`;
     this.hudModifierTitle.innerText = stage.modifier.name;
@@ -154,7 +158,7 @@ export class UiManager {
     this.hudPps.textContent = ms > 0 ? (pieces / (ms / 1000)).toFixed(2) : '0.00';
     this.hudBestTime.textContent = best > 0 ? formatTime(best) : '—';
   }
-  public clearAnnouncements(): void { this.gameAnnouncements.replaceChildren(); }
+  public clearAnnouncements(): void { this.gameAnnouncements.replaceChildren(); document.getElementById('card-trigger-feed')!.replaceChildren(); }
   public cancelIntro(): void {
     clearInterval(this.introInterval);
     this.overlayChamberIntro.classList.add('hidden');
@@ -182,6 +186,7 @@ export class UiManager {
     relics.forEach(r => {
       const el = document.createElement('div');
       el.className = `relic-pill rarity-${r.rarity}`;
+      el.dataset.card = r.id;
       el.title = `${r.buffDescription}${r.curseDescription ? ' | ' + r.curseDescription : ''}`;
       el.innerHTML = `
         <span class="relic-pill-icon">${r.icon}</span>
@@ -193,6 +198,39 @@ export class UiManager {
       this.relicsList.appendChild(el);
     });
   }
+  public updateBuildStatus(run: RunManager): void {
+    document.getElementById('hud-build-name')!.textContent = run.starterBuild?.toUpperCase() ?? '';
+    const text = run.starterBuild === 'combo' ? `SAFETY NET · ${run.comboRescueUsed ? 'Terpakai · pulih stage berikutnya' : '1 penyelamatan combo siap'}`
+      : run.starterBuild === 'demolition' ? `BLAST CORE · ${run.blastCharge}/6 energi${run.blastCharge === 6 ? ' · BOM SIAP' : ''}`
+      : run.starterBuild === 'gambler' ? `KONTRAK · ${run.contract === 'active' ? `${run.contractProgress}/3 clear ≥2 baris` : run.contract === 'won' ? 'MENANG · hadiah dibayar' : 'Belum diambil di shop'}` : '';
+    document.getElementById('hud-build-status')!.textContent = text;
+    document.getElementById('build-status')!.classList.toggle('hidden', !run.starterBuild);
+    const blast = document.getElementById('btn-blast') as HTMLButtonElement;
+    blast.classList.toggle('hidden', run.starterBuild !== 'demolition');
+    blast.disabled = run.blastCharge < 6;
+  }
+
+  public showCardTriggers(triggers: CardTrigger[]): void {
+    if (triggers.length === 0) return;
+    const feed = document.getElementById('card-trigger-feed')!;
+    feed.replaceChildren();
+    for (const [index, trigger] of triggers.entries()) {
+      const item = document.createElement('span');
+      item.className = 'card-trigger';
+      const card = this.relicsList.querySelector<HTMLElement>(`[data-card="${trigger.id}"]`);
+      const name = card?.querySelector('.relic-pill-name')?.textContent ?? '';
+      item.textContent = `${name}${name ? ' · ' : ''}${trigger.text}`;
+      item.style.animationDelay = `${index * 70}ms`;
+      feed.appendChild(item);
+      if (card) {
+        card.classList.remove('card-fired');
+        void card.offsetWidth;
+        card.style.animationDelay = `${index * 70}ms`;
+        card.classList.add('card-fired');
+      }
+    }
+  }
+
   public renderHoldCanvases(holdSlots: (TetrominoType | null)[], maxSlots: number): void {
     Renderer.renderPieceToMiniCanvas(this.holdCanvas0, holdSlots[0] || null, this.spriteCache);
     if (maxSlots > 1) {
@@ -240,7 +278,7 @@ export class UiManager {
     this.overlayChamberIntro.classList.remove('hidden');
     this.introChamberLabel.innerText = 'BERSIAP';
     this.introChamberTitle.innerText = stage.name;
-    this.introChamberGoal.innerText = stage.targetValue ? `Hapus ${stage.targetValue} baris` : this.timeLimitMs ? `${this.timeLimitMs / 1000} detik · raih skor tertinggi` : 'Tanpa batas · papan baru saat penuh';
+    this.introChamberGoal.innerText = stage.targetType === 'score' ? `${stage.targetValue.toLocaleString()} skor · ${stage.pieceLimit} balok` : stage.targetValue ? `Hapus ${stage.targetValue} baris` : this.timeLimitMs ? `${this.timeLimitMs / 1000} detik · raih skor tertinggi` : 'Tanpa batas · papan baru saat penuh';
     this.introChamberAfflictionText.parentElement!.classList.toggle('hidden', stage.modifier.id === 'none');
     this.introChamberAfflictionText.innerText = stage.modifier.id === 'none'
       ? ''
@@ -266,17 +304,31 @@ export class UiManager {
 
   public showShop(run: RunManager, hasStack: boolean, onAction: (action: string, value?: string) => void): void {
     const full = run.relics.length >= run.cardSlots;
+    const needsStarter = !run.starterBuild;
+    document.getElementById('starter-picker')!.classList.toggle('hidden', run.stage.number !== 1);
+    document.getElementById('starter-choice')!.textContent = run.starterBuild ? `${run.starterBuild.toUpperCase()} dipilih · kartu starter tetap selama run.` : 'Pilih cara bermain sebelum belanja.';
+    this.modalRelics.querySelectorAll<HTMLButtonElement>('[data-starter]').forEach(button => {
+      button.disabled = !needsStarter;
+      button.setAttribute('aria-pressed', String(button.dataset.starter === run.starterBuild));
+      button.onclick = () => onAction('starter', button.dataset.starter);
+    });
+    document.getElementById('shop-contract')!.classList.toggle('hidden', run.starterBuild !== 'gambler');
+    const contract = document.getElementById('btn-contract') as HTMLButtonElement;
+    contract.disabled = run.contract !== 'off';
+    contract.textContent = run.contract === 'off' ? 'AMBIL KONTRAK' : 'KONTRAK DIAMBIL';
+    contract.onclick = () => onAction('contract');
+    this.updateBuildStatus(run);
     document.getElementById('shop-wallet')!.textContent = `$${run.coins}`;
     document.getElementById('shop-receipt')!.textContent = run.shopReceipt;
     document.getElementById('shop-round')!.textContent = `STAGE ${String(run.stage.number).padStart(2, '0')}`;
-    document.getElementById('shop-next-rule')!.textContent = `${run.stage.targetValue} baris · ${run.stage.modifier.name}: ${run.stage.modifier.description}`;
+    document.getElementById('shop-next-rule')!.textContent = `${run.stage.targetValue.toLocaleString()} skor · ${run.stage.pieceLimit} balok · ${run.stage.modifier.name}: ${run.stage.modifier.description}`;
     this.relicCardsContainer.replaceChildren();
     for (const [index, card] of run.shopOffers.entries()) {
       const el = document.createElement('article');
       el.className = card ? `relic-card rarity-${card.rarity}` : 'relic-card sold-card';
       if (!card) { el.innerHTML = '<span class="sold-label">SOLD</span><p>Kartu sudah masuk build.</p>'; }
       else {
-        const disabled = full || run.coins < card.price;
+        const disabled = needsStarter || full || run.coins < card.price;
         el.innerHTML = `<div class="card-corner">${String(index + 1).padStart(2, '0')} <span>${card.rarity}</span></div>
           <div class="card-art" aria-hidden="true"><span>${card.icon}</span></div>
           <span class="relic-subtitle">${card.subtitle}</span><h3 class="relic-title">${card.name}</h3>
@@ -290,20 +342,23 @@ export class UiManager {
     inventory.innerHTML = run.relics.length ? '' : '<p class="empty-relic-msg">Enam slot. Gabungkan kartu skor, kontrol, dan ekonomi.</p>';
     for (const card of run.relics) {
       const el = document.createElement('div'); el.className = `shop-owned rarity-${card.rarity}`;
-      el.innerHTML = `<span class="owned-icon" aria-hidden="true">${card.icon}</span><span>${card.name}</span><button class="btn" data-sell="${card.id}">JUAL $${Math.floor(card.price / 2)}</button>`;
+      el.innerHTML = `<span class="owned-icon" aria-hidden="true">${card.icon}</span><span>${card.name}</span>${card.price === 0 ? '<small>STARTER</small>' : `<button class="btn" data-sell="${card.id}">JUAL $${Math.floor(card.price / 2)}</button>`}`;
       inventory.appendChild(el);
     }
     document.getElementById('shop-slots')!.textContent = `${run.relics.length} / ${run.cardSlots}`;
     const reroll = document.getElementById('btn-shop-reroll') as HTMLButtonElement;
-    reroll.textContent = `REROLL $${run.rerollCost}`; reroll.disabled = run.coins < run.rerollCost;
+    reroll.textContent = `REROLL $${run.rerollCost}`; reroll.disabled = needsStarter || run.coins < run.rerollCost;
     const repair = document.getElementById('btn-shop-repair') as HTMLButtonElement;
     repair.disabled = !hasStack || run.repairBought || run.coins < 5;
     repair.textContent = run.repairBought ? 'REPAIR TERPAKAI' : 'REPAIR $5';
     this.modalRelics.querySelectorAll<HTMLElement>('[data-buy]').forEach(el => el.onclick = () => onAction('buy', el.dataset.buy));
     this.modalRelics.querySelectorAll<HTMLElement>('[data-sell]').forEach(el => el.onclick = () => onAction('sell', el.dataset.sell));
     reroll.onclick = () => onAction('reroll'); repair.onclick = () => onAction('repair');
-    document.getElementById('btn-shop-continue')!.onclick = () => onAction('continue');
-    this.setModal(this.modalRelics, true);
+    const play = document.getElementById('btn-shop-continue') as HTMLButtonElement;
+    play.disabled = needsStarter;
+    play.onclick = () => onAction('continue');
+    if (this.modalRelics.classList.contains('hidden')) this.setModal(this.modalRelics, true);
+    else if (!this.modalRelics.contains(document.activeElement) || (document.activeElement as HTMLButtonElement)?.disabled) this.modalRelics.focus({ preventScroll: true });
   }
 
   public hideRelicSelection(): void {

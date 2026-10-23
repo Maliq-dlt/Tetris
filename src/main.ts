@@ -8,7 +8,6 @@ import { DEFAULT_ARR_MS, DEFAULT_DAS_MS, DEFAULT_SOFT_DROP_FACTOR } from './core
 import { ActivePiece, GameMode, GameSettings, SoloRules, TetrominoType } from './core/types';
 import { BagRandomizer } from './core/bag';
 import { Board } from './core/board';
-import { calculateClearScore } from './core/scoring';
 import { calculateGhostY, createPiece, isPieceColliding, tryRotatePiece } from './core/piece';
 import { detectTSpin } from './core/tspin';
 import { InputHandler } from './input/inputHandler';
@@ -160,6 +159,12 @@ class VitrailGame {
     };
     window.addEventListener('click', initAudioOnce);
     window.addEventListener('keydown', initAudioOnce);
+
+    document.getElementById('btn-blast')!.addEventListener('click', () => {
+      if (this.state !== 'PLAYING') return;
+      this.executeBlast();
+      this.canvas.focus({ preventScroll: true });
+    });
 
     // Header buttons
     document.getElementById('btn-audio-toggle')?.addEventListener('click', () => this.toggleAudio());
@@ -352,6 +357,7 @@ class VitrailGame {
   }
 
   private startChamber(): void {
+    this.ui.clearAnnouncements();
     this.state = 'INTRO';
     this.activePiece = null;
     this.input.dasModifier = this.runManager.getEffectiveDasModifier();
@@ -367,6 +373,7 @@ class VitrailGame {
 
     this.ui.updateHud(this.runManager.stage, this.runManager.stats, this.runManager.level);
     this.ui.updateRelicInventory(this.runManager.relics);
+    this.ui.updateBuildStatus(this.runManager);
     this.ui.renderHoldCanvases(this.holdSlots, this.runManager.getEffectiveHoldSlots());
 
     this.ui.showChamberIntro(this.runManager.stage, () => {
@@ -410,6 +417,10 @@ class VitrailGame {
       this.spawnNextPiece();
       return;
     }
+    if (this.runManager.mode === 'roguelite' && this.runManager.stage.piecesUsed >= this.runManager.stage.pieceLimit) {
+      this.endRun('Balok habis', 'Target skor belum tercapai. Coba build atau pola clear lain.');
+      return;
+    }
     // Check Second Chance Relic
     if (this.runManager.hasRelic('faceted_oculus') && !this.runManager.secondChanceUsed) {
       this.runManager.secondChanceUsed = true;
@@ -420,11 +431,18 @@ class VitrailGame {
       return;
     }
 
-    // Run Over
+    this.endRun();
+  }
+
+  private endRun(title?: string, subtitle?: string): void {
     this.state = 'GAMEOVER';
+    this.activePiece = null;
+    this.input.reset();
     this.audio.playGameOver();
     this.ui.updateHud(this.runManager.stage, this.runManager.stats, this.runManager.level);
     this.ui.showGameOverModal(this.runManager.stats, false, this.runManager.elapsedMs, this.runManager.pieces, this.runManager.bestSprintMs, this.runManager.mode);
+    if (title) document.getElementById('gameover-title')!.textContent = title;
+    if (subtitle) document.getElementById('gameover-subtitle')!.textContent = subtitle;
   }
 
   private togglePause(): void {
@@ -576,6 +594,11 @@ class VitrailGame {
   private handleGameplayInputs(): void {
     if (!this.activePiece) return;
 
+    if (this.input.consumeAction('blast')) {
+      this.executeBlast();
+      if (this.state !== 'PLAYING' || !this.activePiece) return;
+    }
+
     const shift = this.input.consumeHorizontalShift();
     const direction = Math.sign(shift);
     for (let i = 0; i < Math.abs(shift); i++) {
@@ -627,6 +650,19 @@ class VitrailGame {
     if (this.input.consumeAction('hold')) {
       this.executeHold();
     }
+  }
+
+  private executeBlast(): void {
+    if (!this.activePiece) return;
+    const target = this.board.getBlastTarget(this.activePiece);
+    const score = this.runManager.detonateBlast(() => this.board.blast(target.x, target.y));
+    if (score <= 0) return;
+    this.audio.playClear(3, false, false, false, 0, false);
+    this.ui.showCardTriggers([{ id: 'blast_core', text: `BOOM · +${score} skor` }]);
+    this.ui.showScoreBurst(score, 0);
+    this.ui.updateBuildStatus(this.runManager);
+    this.ui.updateHud(this.runManager.stage, this.runManager.stats, this.runManager.level);
+    if (this.runManager.finishPlacement() === 'cleared') this.handleChamberCleared();
   }
 
   private onPieceManipulated(): void {
@@ -706,7 +742,7 @@ class VitrailGame {
     const { topOut } = this.board.lockPiece(piece);
     this.audio.playLock();
     this.renderer.triggerLockEffect(piece);
-    this.runManager.pieces++;
+    this.runManager.recordPlacement();
 
     if (topOut) {
       this.handleTopOut();
@@ -718,44 +754,18 @@ class VitrailGame {
     const linesCleared = clearedRows.length;
     const isPerfectClear = linesCleared > 0 && this.board.isPerfectClear();
 
+    const isB2B = this.runManager.stats.b2bStreak > 0;
+    const scoreResult = this.runManager.scorePlacement(linesCleared, tspin, isPerfectClear);
+    const prism = scoreResult.prism;
+    this.ui.updatePrism(this.runManager.prismCharge, this.runManager.feverLines);
+    this.ui.showCardTriggers(scoreResult.triggers);
+    this.ui.updateBuildStatus(this.runManager);
+    if (prism.activated) this.ui.showAnnouncement('FEVER · 2×');
+    if (scoreResult.coins) this.ui.showAnnouncement(`+$${scoreResult.coins}`);
+    this.ui.updateWallet(this.runManager.coins);
+
     // Scoring & B2B
     if (linesCleared > 0 || tspin !== 'none') {
-      if (linesCleared > 0) {
-        this.runManager.stats.currentCombo++;
-        if (this.runManager.stats.currentCombo > this.runManager.stats.maxCombo) {
-          this.runManager.stats.maxCombo = this.runManager.stats.currentCombo;
-        }
-      }
-
-      if (linesCleared === 0) this.runManager.stats.currentCombo = 0;
-      const isB2B = this.runManager.stats.b2bStreak > 0;
-      const b2bMult = this.runManager.getEffectiveB2BMultiplier();
-      const comboBonus = this.runManager.getEffectiveComboBonus();
-      const prism = this.runManager.registerPrismClear(linesCleared, this.runManager.stats.currentCombo);
-      const scoreMult = this.runManager.getEffectiveScoreMultiplier() * prism.multiplier;
-      this.ui.updatePrism(this.runManager.prismCharge, this.runManager.feverLines);
-      if (prism.activated) this.ui.showAnnouncement('FEVER · 2×');
-
-      const scoreResult = calculateClearScore(
-        linesCleared,
-        tspin,
-        this.runManager.level,
-        isB2B,
-        Math.max(0, this.runManager.stats.currentCombo - 1),
-        isPerfectClear,
-        b2bMult,
-        comboBonus,
-        scoreMult
-      );
-
-      if (tspin !== 'none' && this.runManager.hasRelic('martyrs_shard')) scoreResult.finalScore *= 2;
-      if (linesCleared === 1 && tspin === 'none' && this.runManager.hasRelic('martyrs_shard')) scoreResult.finalScore = 0;
-      if (isPerfectClear && this.runManager.hasRelic('crucible_of_light')) scoreResult.finalScore += 10000;
-      this.runManager.addScore(scoreResult.finalScore);
-      const earned = this.runManager.awardClearCoins(linesCleared, this.runManager.stats.currentCombo);
-      if (earned) this.ui.showAnnouncement(`+$${earned}`);
-      this.ui.updateWallet(this.runManager.coins);
-
       // Maintain or break B2B
       if (scoreResult.maintainsB2B && scoreResult.isDifficultClear && linesCleared > 0) {
         this.runManager.stats.b2bStreak++;
@@ -791,24 +801,13 @@ class VitrailGame {
         this.runManager.stats.currentCombo, prism.activated);
       if (this.runManager.mode !== 'sprint') this.ui.showScoreBurst(scoreResult.finalScore, this.runManager.stats.currentCombo);
       // Stage progression check
-      const chamberCleared = this.runManager.addLines(linesCleared);
-      this.ui.updateHud(this.runManager.stage, this.runManager.stats, this.runManager.level);
-
-      if (chamberCleared) {
-        if (this.runManager.mode !== 'roguelite') {
-          this.finishSolo();
-          return;
-        }
-        this.handleChamberCleared();
-        return;
-      }
-    } else {
-      // No lines cleared: reset combo
-      this.runManager.stats.currentCombo = 0;
-      this.runManager.registerPrismClear(0, 0);
-      this.ui.updatePrism(this.runManager.prismCharge, this.runManager.feverLines);
-      this.ui.updateHud(this.runManager.stage, this.runManager.stats, this.runManager.level);
+      if (this.runManager.addLines(linesCleared)) { this.finishSolo(); return; }
     }
+    this.ui.updateHud(this.runManager.stage, this.runManager.stats, this.runManager.level);
+
+    const outcome = this.runManager.finishPlacement();
+    if (outcome === 'cleared') { this.handleChamberCleared(); return; }
+    if (outcome === 'failed') { this.endRun('Balok habis', 'Target skor belum tercapai. Coba build atau pola clear lain.'); return; }
 
     // Spawn next piece
     this.spawnNextPiece();
@@ -884,6 +883,8 @@ class VitrailGame {
   private shopAction(action: string, value = ''): void {
     if (this.state !== 'SHOP') return;
     let changed = false;
+    if (action === 'starter') changed = this.runManager.chooseStarter(value);
+    if (action === 'contract') changed = this.runManager.acceptContract();
     if (action === 'buy') changed = this.runManager.buyCard(Number(value));
     if (action === 'sell') changed = this.runManager.sellCard(value);
     if (action === 'reroll') changed = this.runManager.rerollShop();
@@ -932,7 +933,8 @@ class VitrailGame {
       this.renderer.render(
         this.board,
         this.activePiece,
-        this.settings.ghostPiece && this.runManager.getGhostPieceEnabled()
+        this.settings.ghostPiece && this.runManager.getGhostPieceEnabled(),
+        this.state === 'PLAYING' && this.runManager.starterBuild === 'demolition' && this.runManager.blastCharge >= 6
       );
 
       // Calculate and update FPS counter

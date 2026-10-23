@@ -7,6 +7,7 @@ import { BOARD_WIDTH } from '../core/constants';
 import { GameSettings } from '../core/types';
 
 export type InputAction =
+  | 'blast'
   | 'softDrop'
   | 'hardDrop'
   | 'rotateCW'
@@ -155,6 +156,8 @@ export class InputHandler {
         return 'rotateCCW';
       case 'KeyA':
         return 'rotate180';
+      case 'KeyB':
+        return 'blast';
       case 'Space':
         return 'hardDrop';
       case 'KeyC':
@@ -273,6 +276,7 @@ export class InputHandler {
     // 3: Y (Hold)
     // 4: LB (Hold)
     // 5: RB (Hard Drop)
+    // 8: View / Back (Blast)
     // 9: Start (Pause)
     // 12: Dpad Up (Hard Drop)
     // 13: Dpad Down (Soft Drop)
@@ -285,6 +289,7 @@ export class InputHandler {
     checkButtonDown(3, 'hold');
     checkButtonDown(4, 'hold');
     checkButtonDown(5, 'hardDrop');
+    checkButtonDown(8, 'blast');
     checkButtonDown(9, 'pause');
     checkButtonDown(12, 'hardDrop');
 

@@ -2,6 +2,22 @@ import { RelicDefinition } from '../core/types';
 
 export const ALL_RELICS: RelicDefinition[] = [
   {
+    "id": "safety_net", "name": "SAFETY NET", "subtitle": "COMBO STARTER", "icon": "↗", "price": 0,
+    "rarity": "rare", "buffDescription": "Sekali per stage, placement tanpa clear mempertahankan combo.",
+    "effects": {}, "isCurseTradeoff": false
+  },
+  {
+    "id": "blast_core", "name": "BLAST CORE", "subtitle": "DEMOLITION STARTER", "icon": "✦", "price": 0,
+    "rarity": "rare", "buffDescription": "6 baris mengisi satu bom. B: hancurkan area 3×3 di ghost; +40 skor per kotak × level.",
+    "effects": {}, "isCurseTradeoff": false
+  },
+  {
+    "id": "double_or_nothing", "name": "DOUBLE OR NOTHING", "subtitle": "GAMBLER STARTER", "icon": "?!", "price": 0,
+    "rarity": "cursed", "buffDescription": "Ambil kontrak di shop: 3 clear minimal 2 baris memberi +1.200 skor × level dan $4.",
+    "curseDescription": "Kontrak yang belum selesai saat stage berakhir: −$3.",
+    "effects": {}, "isCurseTradeoff": true
+  },
+  {
     "id": "cathedral_bell",
     "name": "DOUBLE POCKET",
     "subtitle": "HOLD ENGINE",
@@ -281,7 +297,7 @@ export const ALL_RELICS: RelicDefinition[] = [
 ];
 
 export function getRandomRelicChoices(count: number, currentRelicIds: string[]): RelicDefinition[] {
-  const eligible = ALL_RELICS.filter(r => !currentRelicIds.includes(r.id));
+  const eligible = ALL_RELICS.filter(r => r.price > 0 && !currentRelicIds.includes(r.id));
   for (let i = eligible.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [eligible[i], eligible[j]] = [eligible[j], eligible[i]];

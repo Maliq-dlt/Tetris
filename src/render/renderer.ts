@@ -72,6 +72,7 @@ export class Renderer {
     this.boardPixelWidth = BOARD_WIDTH * this.tileSize;
     this.boardPixelHeight = (VISIBLE_ROWS + this.spawnRows) * this.tileSize;
     this.canvas.closest<HTMLElement>('.main-layout')?.style.setProperty('--spawn-space', `${this.spawnRows * this.tileSize}px`);
+    this.canvas.closest<HTMLElement>('.main-layout')?.style.setProperty('--board-width', `${this.boardPixelWidth}px`);
 
     this.canvas.width = Math.round(this.boardPixelWidth * this.dpr);
     this.canvas.height = Math.round(this.boardPixelHeight * this.dpr);
@@ -144,7 +145,8 @@ export class Renderer {
   public render(
     board: Board,
     activePiece: ActivePiece | null,
-    showGhost: boolean
+    showGhost: boolean,
+    blastReady = false
   ): void {
     const ctx = this.ctx;
     ctx.save();
@@ -222,6 +224,22 @@ export class Renderer {
           }
         }
       }
+    }
+
+    if (activePiece && blastReady) {
+      const { x, y } = board.getBlastTarget(activePiece);
+      ctx.save();
+      ctx.strokeStyle = '#ffc27f';
+      ctx.fillStyle = '#ffb76c35';
+      ctx.setLineDash([4, 3]);
+      for (let r = Math.max(0, y - 1); r <= Math.min(BOARD_HEIGHT - 1, y + 1); r++) {
+        for (let c = Math.max(0, x - 1); c <= Math.min(BOARD_WIDTH - 1, x + 1); c++) {
+          const px = c * this.tileSize, py = (r - VISIBLE_START_ROW + this.spawnRows) * this.tileSize;
+          if (board.grid[r][c]) ctx.fillRect(px, py, this.tileSize, this.tileSize);
+          ctx.strokeRect(px + 1, py + 1, this.tileSize - 2, this.tileSize - 2);
+        }
+      }
+      ctx.restore();
     }
 
     // Ease small movement only; drops and new spawns stay immediate.

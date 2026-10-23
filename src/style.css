@@ -53,7 +53,7 @@ button:active { transform: translateY(1px); }
 .config-mode .mode-number { font-size: 25px; letter-spacing: -1px; }
 .config-mode strong { font-size: 32px; letter-spacing: .2px; }
 .lobby-note { color: #939e98; margin: 13px 0 0 28px; font-size: 10px; line-height: 1.7; }
-.main-layout { --side: 130px; display: grid; grid-template-columns: var(--side) max-content var(--side); align-items: start; justify-content: center; gap: 0 25px; max-width: 1000px; margin: 20px auto 0; }
+.main-layout { --side: 130px; display: grid; grid-template-columns: var(--side) var(--board-width, max-content) var(--side); align-items: start; justify-content: center; gap: 0 25px; max-width: 1000px; margin: 20px auto 0; }
 .panel { min-width: 0; padding-top: calc(28px + var(--spawn-space, 58px)); display: flex; flex-direction: column; gap: 26px; }
 .card-title { color: #c4cdc6; margin: 0; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; }
 .card-header-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 13px; }
@@ -91,7 +91,7 @@ button:active { transform: translateY(1px); }
 .next-slot-canvas { width: 110px; max-width: 100%; height: 65px; object-fit: contain; }
 .stat-row { display: flex; align-items: center; justify-content: space-between; margin: 11px 0; gap: 10px; font-size: 13px; font-variant-numeric: tabular-nums; }
 .stat-label { color: var(--muted); font-size: 10px; }
-.run-details { grid-column: 1 / -1; display: flex; gap: 32px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); }
+.run-details { min-width: 0; overflow-wrap: anywhere; grid-column: 1 / -1; display: flex; gap: 32px; margin-top: 28px; padding-top: 18px; border-top: 1px solid var(--line); }
 .modifier-card { max-width: 220px; }
 .modifier-tag { color: #d7bd8b; font-size: 9px; }
 .modifier-title { margin: 7px 0; font-size: 14px; }
@@ -222,7 +222,7 @@ body[data-mode=sprint] .scoreboard, body[data-mode=sprint] .summary-metric:has(.
 .shop-economy { color: #8fa6a1; font-size: 9px; line-height: 1.7; margin: 17px 0 0; }
 button:disabled { opacity: .4; cursor: not-allowed; transform: none; }
 @media (min-width: 1120px) {
- body[data-mode=roguelite] .main-layout { grid-template-columns: 130px max-content 130px 220px; max-width: 1200px; gap: 0 28px; }
+ body[data-mode=roguelite] .main-layout { grid-template-columns: 130px var(--board-width, max-content) 130px 220px; max-width: 1200px; gap: 0 28px; }
  body[data-mode=roguelite] .run-details { grid-column: 4; grid-row: 1; flex-direction: column; gap: 20px; margin: calc(28px + var(--spawn-space)) 0 0; padding: 0; border: 0; }
 }
 @media (max-width: 1119px) and (min-width: 701px) {
@@ -288,3 +288,27 @@ body[data-mode=zen] { --accent: #c6aeff; }
   .lobby-identity h1 { font-size: 85px; }
   .lobby-identity p { font-size: 12px; }
 }
+
+/* Roguelite score trials and starter abilities. */
+.piece-budget { margin: 10px 0 0; color: #afc8c2; font-size: 10px; line-height: 1.5; }
+.piece-budget.budget-low { color: #ffac91; }
+.build-status .eyebrow { display: block; overflow-wrap: anywhere; }
+.build-status { border-top: 1px solid var(--line); padding-top: 14px; }
+.build-status p { color: #c0d6cc; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.build-status .btn { width: 100%; padding: 8px 5px; font-size: 10px; }
+.starter-picker { margin: 18px 0 22px; }
+.starter-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 12px; }
+.starter-option { cursor: pointer; text-align: left; padding: 14px; border: 1px solid #739c95; background: #14262d; color: #e7efe2; display: grid; gap: 8px; }
+.starter-option:nth-child(2) { border-color: #d4a26f; }.starter-option:nth-child(3) { border-color: #ba91af; }
+.starter-option strong { font: 26px/1 'Jersey 10', monospace; }.starter-glyph { font: 28px/1 'Jersey 10', monospace; color: #dac38d; }
+.starter-option small, .starter-choice { font-size: 10px; line-height: 1.6; color: #b6c9c3; }
+.starter-option[aria-pressed=true] { opacity: 1; border-width: 2px; background: #2d4543; }.starter-option:disabled:not([aria-pressed=true]) { opacity: .4; }
+.starter-option:focus-visible { outline: 2px solid #f5e2a5; outline-offset: 3px; }
+.shop-contract { display: flex; align-items: center; gap: 20px; padding: 14px; margin: 15px 0; background: #332b30; border-left: 3px solid #d5a9b4; }
+.shop-contract p { color: #d7c3cd; font-size: 11px; line-height: 1.6; }.shop-contract .btn { flex-shrink: 0; }
+.card-trigger-feed { display: flex; flex-wrap: wrap; gap: 6px; min-height: 24px; margin: 8px 0; }
+.card-trigger { max-width: 100%; overflow-wrap: anywhere; font-size: 10px; color: #e4eccc; background: #233e3d; border: 1px solid #6b9690; padding: 5px 8px; animation: card-fire .7s ease-out both; }
+.card-fired { animation: card-fire .7s ease-out; }
+@keyframes card-fire { 0%, 35% { background-color: #52674b; border-color: #ecdc9c; } 100% { border-color: #6b9690; } }
+@media (max-width: 600px) { .starter-options { grid-template-columns: 1fr; }.starter-option { grid-template-columns: 30px 1fr; }.starter-option small { grid-column: 2; }.shop-contract { flex-direction: column; align-items: stretch; } }
+@media (prefers-reduced-motion: reduce) { .card-fired, .card-trigger { animation: none; } }

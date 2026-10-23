@@ -114,12 +114,18 @@ export interface StageModifierDefinition {
   };
 }
 
+export type StarterBuild = 'combo' | 'demolition' | 'gambler';
+
+export interface CardTrigger { id: string; text: string; }
+
 export interface StageInfo {
   number: number;
   name: string;
   targetType: 'lines' | 'score';
   targetValue: number;
   currentProgress: number;
+  pieceLimit: number;
+  piecesUsed: number;
   modifier: StageModifierDefinition;
   cleared: boolean;
 }

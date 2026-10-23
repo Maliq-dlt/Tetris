@@ -47,7 +47,7 @@
           <div class="live-metric"><span>BARIS</span><strong id="hud-lines">0</strong></div>
           <div class="live-metric sprint-only"><span>REKOR SPRINT</span><strong id="hud-best-time">—</strong></div>
         </section>
-        <section class="card chamber-goal-card"><h2 class="card-title">TARGET</h2><div class="goal-metric"><span id="hud-goal-desc">Hapus 40 baris</span><strong id="hud-goal-counter">0 / 40</strong></div><div class="progress-bar-rail"><div id="hud-goal-progress" class="progress-bar-fill"></div></div></section>
+        <section class="card chamber-goal-card"><h2 class="card-title">TARGET</h2><div class="goal-metric"><span id="hud-goal-desc">Hapus 40 baris</span><strong id="hud-goal-counter">0 / 40</strong></div><div class="progress-bar-rail"><div id="hud-goal-progress" class="progress-bar-fill"></div></div><p id="hud-piece-budget" class="piece-budget roguelite-only"></p></section>
       </aside>
       <section class="playfield-wrapper">
         <div class="board-heading"><span id="hud-mode" class="eyebrow">SPRINT 40</span><span class="board-size">10 × 20</span></div>
@@ -59,6 +59,11 @@
         <section class="next-card"><div class="card-header-row"><h2 class="card-title">NEXT</h2><span id="hud-next-count-badge" class="badge-count">5</span></div><div id="next-canvas-container" class="next-canvas-container"></div></section>
         <section class="stats-card"><div class="stat-row roguelite-only"><span class="stat-label">Level</span><strong id="hud-level">1</strong></div><div class="stat-row"><span class="stat-label">B2B</span><strong id="hud-b2b">0</strong></div><div class="stat-row"><span class="stat-label">Combo</span><strong id="hud-combo">0</strong></div></section>
         <section class="prism-card roguelite-only"><div class="card-header-row"><h2 class="card-title">FEVER</h2><span class="prism-multiplier">2×</span></div><div class="prism-track"><div id="prism-fill"></div></div><strong id="prism-status">0 / 12</strong><p id="prism-hint">Combo mengisi meter. Penuh = skor 2×.</p></section>
+        <section id="build-status" class="build-status roguelite-only" aria-label="Kemampuan build">
+          <span id="hud-build-name" class="eyebrow"></span><p id="hud-build-status"></p>
+          <button id="btn-blast" class="btn hidden" disabled>LEDAKKAN [B]</button>
+          <div id="card-trigger-feed" class="card-trigger-feed" role="status" aria-live="polite" aria-atomic="true"></div>
+        </section>
       </aside>
       <section class="run-details roguelite-only" aria-label="Aturan dan upgrade"><section id="modifier-card" class="modifier-card"><span class="modifier-tag">STAGE DEBUFF</span><h3 id="hud-modifier-title" class="modifier-title"></h3><p id="hud-modifier-desc" class="modifier-desc"></p></section><div class="wallet-card"><span class="eyebrow">CREDITS</span><strong id="hud-coins">$8</strong><span>Shop setiap stage<br>6 slot kartu aktif</span></div><section class="relics-inventory-card"><div class="card-header-row"><h2 class="card-title">YOUR BUILD</h2><span id="hud-relic-count" class="badge-count">0</span></div><div id="relics-list" class="relics-list-grid"><p class="empty-relic-msg">Kartu, sinergi, dan risiko. Mulai build di shop.</p></div></section></section>
     </main>
@@ -76,6 +81,15 @@
       <div class="modal-dialog shop-dialog">
         <div class="shop-heading"><div><span id="shop-round" class="eyebrow">STAGE 01</span><h2 id="shop-title" class="modal-title">RIFT MARKET<span>.</span></h2><p class="modal-subtitle">A little luck. A dangerous build.</p></div><div class="shop-balance"><span>CREDITS</span><strong id="shop-wallet">$8</strong></div></div>
         <p id="shop-receipt" class="shop-receipt" role="status"></p>
+        <section id="starter-picker" class="starter-picker" aria-labelledby="starter-title">
+          <h3 id="starter-title" class="card-title">PILIH STARTER · GRATIS · 1 SLOT</h3>
+          <div class="starter-options">
+            <button class="starter-option" data-starter="combo"><span class="starter-glyph" aria-hidden="true">↗</span><strong>COMBO</strong><small>SAFETY NET · satu placement tanpa clear tidak memutus combo, sekali per stage.</small></button>
+            <button class="starter-option" data-starter="demolition"><span class="starter-glyph" aria-hidden="true">✦</span><strong>DEMOLITION</strong><small>BLAST CORE · clear 6 baris, lalu ledakkan area 3×3 di ghost dengan B.</small></button>
+            <button class="starter-option" data-starter="gambler"><span class="starter-glyph" aria-hidden="true">?!</span><strong>GAMBLER</strong><small>DOUBLE OR NOTHING · kontrak berisiko untuk bonus skor dan uang.</small></button>
+          </div><p id="starter-choice" class="starter-choice"></p>
+        </section>
+        <section id="shop-contract" class="shop-contract hidden"><div><h3 class="card-title">DOUBLE OR NOTHING</h3><p>3 clear minimal 2 baris dalam stage ini. Hadiah: +1.200 skor × level dan $4. Gagal: −$3 (sebatas saldo).</p></div><button id="btn-contract" class="btn">AMBIL KONTRAK</button></section>
         <div id="relic-cards-container" class="relic-cards-grid"></div>
         <div class="shop-tools"><button id="btn-shop-reroll" class="btn">REROLL $2</button><div><button id="btn-shop-repair" class="btn">REPAIR $5</button><small>Hapus 4 baris dasar. Tidak dihitung sebagai clear.</small></div></div>
         <div class="shop-build-heading"><h3 class="card-title">YOUR BUILD</h3><span id="shop-slots">0 / 6</span></div>
