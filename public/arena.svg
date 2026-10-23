@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">
+<defs><linearGradient id="sky" x2="0" y2="1"><stop stop-color="#182e37"/><stop offset=".65" stop-color="#5c5b50"/><stop offset="1" stop-color="#152930"/></linearGradient><radialGradient id="mist"><stop stop-color="#e4ad7e" stop-opacity=".5"/><stop offset="1" stop-color="#c69571" stop-opacity="0"/></radialGradient><pattern id="blocks" width="44" height="32" patternUnits="userSpaceOnUse"><path d="M0 0H44V32H0Z" fill="none" stroke="#bac5bc" stroke-opacity=".045"/></pattern></defs>
+<path fill="url(#sky)" d="M0 0H1600V1000H0Z"/>
+<path fill="#435453" d="M0 690V470H100V390H180V340H260V310H340V385H420V430H490V500H590V530H730V450H810V340H880V260H960V215H1030V300H1110V350H1170V400H1270V510H1400V560H1600V1000H0Z"/>
+<path fill="#334345" d="M0 1000V620H120V580H230V520H310V470H400V500H450V550H530V620H650V650H730V590H820V470H910V380H990V420H1070V480H1130V550H1250V610H1390V660H1600V1000Z"/>
+<ellipse cx="850" cy="320" rx="650" ry="450" fill="url(#mist)"/>
+<path fill="#192c32" d="M0 1000V760H160V700H290V660H420V680H500V750H620V800H780V760H900V620H1020V560H1100V630H1190V690H1300V720H1430V800H1600V1000Z"/>
+<path fill="#14242b" d="M0 1000V870H200V820H340V850H580V900H820V840H970V760H1110V800H1220V860H1430V900H1600V1000Z"/>
+<path fill="url(#blocks)" d="M0 0H1600V1000H0Z"/>
+</svg>

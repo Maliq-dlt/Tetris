@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="12" fill="#0d1017"/>
+  <path d="M32 6 C20 18 16 32 16 58 L48 58 C48 32 44 18 32 6 Z" fill="#141822" stroke="#d4a373" stroke-width="2"/>
+  <path d="M32 12 L32 54" stroke="#d4a373" stroke-width="1.5"/>
+  <path d="M20 32 L44 32" stroke="#d4a373" stroke-width="1.5"/>
+  <!-- Stained Glass Gems -->
+  <polygon points="32,16 26,26 32,30 38,26" fill="#1976d2" opacity="0.9"/>
+  <polygon points="22,34 30,34 28,48 20,44" fill="#c2185b" opacity="0.9"/>
+  <polygon points="34,34 42,34 44,44 36,48" fill="#fbc02d" opacity="0.9"/>
+  <polygon points="28,48 36,48 34,54 30,54" fill="#2e7d32" opacity="0.9"/>
+</svg>

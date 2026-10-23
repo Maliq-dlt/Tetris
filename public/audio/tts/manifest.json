@@ -1,0 +1,85 @@
+{
+  "engine": "KittenTTS",
+  "package_version": "0.1.3",
+  "model": "KittenML/kitten-tts-nano-0.1",
+  "voice": "expr-voice-2-f",
+  "sample_rate": 24000,
+  "speed": 1.08,
+  "clips": {
+    "single": {
+      "text": "Nice cut!",
+      "seconds": 1.314,
+      "sha256": "8093d22d52ec0f93ff1da3c5a7eb967982d7149ede0d9b9732dd94f980f89687"
+    },
+    "double": {
+      "text": "Double sparkle!",
+      "seconds": 1.609,
+      "sha256": "98ac858f1a21499d0c41a62045cfc659226073bf78a3376da04b52e9d793a2ea"
+    },
+    "triple": {
+      "text": "Triple shatter!",
+      "seconds": 1.564,
+      "sha256": "c0f35b6212d358869ec94b8153705992989b6acbdc71c6de72cde78d99aa5a40"
+    },
+    "tetris": {
+      "text": "Tetris! Beautifully done!",
+      "seconds": 2.639,
+      "sha256": "41d8338a82580c495cd043bc91733e06d9b634a80f4004095da15a4efff26973"
+    },
+    "tspin": {
+      "text": "What a twist!",
+      "seconds": 1.52,
+      "sha256": "fbb15d2307192cb95ab8eb58b136eeb5b69724f6f653aa1c344d008aba36ce24"
+    },
+    "b2b": {
+      "text": "Back to back!",
+      "seconds": 1.489,
+      "sha256": "d6877f172dc7a52e73da286a8c433dd0f29b6cdb19dddb1717043ebc3178a16b"
+    },
+    "perfect_clear": {
+      "text": "Flawless! Every last shard!",
+      "seconds": 2.625,
+      "sha256": "a2f356852e4bfea37d5bfd2472b79d0f01e71dee674056677977444ab17c9763"
+    },
+    "relic": {
+      "text": "A little power. A little chaos.",
+      "seconds": 3.089,
+      "sha256": "9d0df7af8bdabe34495e0a3c7114cf6532ba451cf0a9ca2e9957c4fa32cf44ea"
+    },
+    "stage_clear": {
+      "text": "Chamber clear! Pick your power.",
+      "seconds": 2.895,
+      "sha256": "cc4450f374315cc57dd07c2a7ac15634036fa4236c41668f347c5a4162c41dc5"
+    },
+    "game_over": {
+      "text": "Every masterpiece starts with a few broken pieces.",
+      "seconds": 4.739,
+      "sha256": "6b2faecb50891ef4f0b3363029625ae6dfdf39282110fd7f99a5a46ab4f0cc39"
+    },
+    "combo_2": {
+      "text": "Looking sharp!",
+      "seconds": 1.24,
+      "sha256": "0ec745fab50e948f9eb9e0d469f2e8aa70e6b864f36a8803d80bb76172456b28"
+    },
+    "combo_3": {
+      "text": "Keep that sparkle going!",
+      "seconds": 2.239,
+      "sha256": "9b5391852881958d00d2b8261e4293379c741523d137feadae2ed968c461f387"
+    },
+    "combo_5": {
+      "text": "Brilliant! You are on fire!",
+      "seconds": 2.589,
+      "sha256": "6c9919d8f23071278583106c3122d5abf4f30a336d26b96eafea0be40944844e"
+    },
+    "combo_8": {
+      "text": "Unstoppable! What a masterpiece!",
+      "seconds": 3.239,
+      "sha256": "e83e7c1f2ad548e3238a25d38e409549d27804f6fcd1b47e075db3afbc2c171f"
+    },
+    "fever": {
+      "text": "Prism fever! Let it shine!",
+      "seconds": 2.789,
+      "sha256": "c0dde60736be51019c731b8c4115bf0e954f50e26b0f926202710b2f70bd4b24"
+    }
+  }
+}

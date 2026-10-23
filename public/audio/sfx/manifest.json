@@ -1,0 +1,103 @@
+{
+  "source": "User-provided Block Blast (Block Juggle) sound pack",
+  "clips": {
+    "move": {
+      "file": "move.ogg",
+      "source": "d7a60dac-cc3f-41ea-ae4b-517fda4a4284.ogg",
+      "sha256": "f9d419466e12ac9920faa9ed160e282251bf3eca52ab89ecd8e1f6328b37c8e6",
+      "seconds": 0.052,
+      "gain": 1.5
+    },
+    "rotate": {
+      "file": "rotate.ogg",
+      "source": "f8ac912e-946a-414d-9655-b774e5f51ac9.ogg",
+      "sha256": "5f9a923dcfd6bd44feba62a48f4f033ad182076e3850c8ae2aea3554bfc33e82",
+      "seconds": 0.052,
+      "gain": 1.132
+    },
+    "drop": {
+      "file": "drop.ogg",
+      "source": "fdfb917f-8d38-4b16-9184-97653e37c590.ogg",
+      "sha256": "091542fe07d56da6a072a65275deee1c13b1c0e4cc63ef3f126e8f2b8e9c7e5d",
+      "seconds": 0.13,
+      "gain": 0.46
+    },
+    "lock": {
+      "file": "lock.ogg",
+      "source": "b689e2ff-fd95-440a-a774-708a8e9149f3.ogg",
+      "sha256": "736caca068ccccc11b6c707b36c09f16eae869a50bc542672a1e4dacf6a81531",
+      "seconds": 0.137,
+      "gain": 0.984
+    },
+    "hold": {
+      "file": "hold.ogg",
+      "source": "525c637b-f703-4d56-bea9-045908f27dad.ogg",
+      "sha256": "a6f85b74b36a9f8f6c8ff0d4c60ed915073c8a9e7fedfe8389caa79ec03ac895",
+      "seconds": 0.201,
+      "gain": 1.091
+    },
+    "clear1": {
+      "file": "clear1.ogg",
+      "source": "9eda3121-492d-41f7-b581-a7fe37569a11.ogg",
+      "sha256": "d4a2eec212e6dd762d89b1c419563c79e2f648ca331e04dfa70bd187537896e5",
+      "seconds": 0.318,
+      "gain": 1.132
+    },
+    "clear2": {
+      "file": "clear2.ogg",
+      "source": "47d00452-f9b7-49cf-ab4e-41dbb585b5e8.ogg",
+      "sha256": "8e8052875da3d1916803644cc647835d7af9740d29624b1d646d9e72fb0c2a74",
+      "seconds": 0.384,
+      "gain": 1.212
+    },
+    "clear3": {
+      "file": "clear3.ogg",
+      "source": "701f7244-847e-4f22-9f7d-2bdc4091a667.ogg",
+      "sha256": "866a506a7778dd74c4bc058be702094156699272d1b04e696f43132b515e6ae7",
+      "seconds": 0.395,
+      "gain": 0.569
+    },
+    "clear4": {
+      "file": "clear4.ogg",
+      "source": "b5b306b3-0a95-4937-a096-f5626fb30fa0.ogg",
+      "sha256": "62c7169d2c0b860b258a5dda81171a98221b2b5d631eaeecf89a5f895fc84589",
+      "seconds": 0.408,
+      "gain": 0.538
+    },
+    "combo": {
+      "file": "combo.ogg",
+      "source": "0ba0fa9e-1fad-40e4-b7d7-01b2d1073067.ogg",
+      "sha256": "28958cb0fe025bada88d3ba7722b701b4935a67ecbd411ac9d873e29c769ab4f",
+      "seconds": 0.486,
+      "gain": 1.308
+    },
+    "tspin": {
+      "file": "tspin.ogg",
+      "source": "365c85d3-23cb-4679-838b-2a656cbf207b.ogg",
+      "sha256": "1d5c4ac07a0e0607cbf91cd14be2da6d1fd592c16adf1e8466f9207156cedc12",
+      "seconds": 0.387,
+      "gain": 1.446
+    },
+    "select": {
+      "file": "select.ogg",
+      "source": "6687e922-a17e-4d44-b2ac-9785a47c66a7.ogg",
+      "sha256": "1dabecbedd03597d7ce2b1a7a7a46e004072e50407802815070e49470e30bce0",
+      "seconds": 0.161,
+      "gain": 2.0
+    },
+    "stage": {
+      "file": "stage.ogg",
+      "source": "e2b55277-1205-4db6-bb04-f50cb91a96c6.ogg",
+      "sha256": "5057c96fdba739f1433bf34a5106fa2b5b46d9c5839233a02afbed38acb0c7b9",
+      "seconds": 0.532,
+      "gain": 0.723
+    },
+    "gameover": {
+      "file": "gameover.ogg",
+      "source": "7d01d31a-0155-4cc7-8322-83b76af3052f.ogg",
+      "sha256": "df9c91bd0fd884c0f16e10aabde6d1f3b23f62fd94b7157cb53850a7b1847835",
+      "seconds": 0.596,
+      "gain": 1.519
+    }
+  }
+}

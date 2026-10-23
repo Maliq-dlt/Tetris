@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Tetris dengan progres stage, upgrade, dan combo.">
+  <title>VITRAIL · Tetris</title>
+  <link rel="preload" href="/fonts/Jersey10-Regular.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div id="app" class="app-container is-lobby">
+    <header class="cathedral-header">
+      <div class="header-left"><a class="game-title" href="/" aria-label="Vitrail, halaman awal">VITRAIL</a><span class="game-subtitle">Solo arcade</span></div>
+      <div id="stage-banner-mini" class="stage-badge roguelite-only"><span class="stage-label">Stage</span><span id="hud-stage-num" class="stage-value">1</span><span id="hud-stage-name" class="stage-name">Stage 1</span></div>
+      <div class="header-right"><button class="header-btn home-button" data-home aria-label="Kembali ke lobby">← Lobby</button>
+        <button id="btn-audio-toggle" class="header-btn" title="Suara (M)" aria-label="Suara" aria-pressed="false"><span class="btn-icon" aria-hidden="true">♪</span><span class="btn-label">Suara</span></button>
+        <button id="btn-settings" class="header-btn" title="Pengaturan (O)" aria-label="Pengaturan"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 17h16M8 4v6M16 14v6"/></svg></button>
+        <button id="btn-pause" class="header-btn" title="Jeda (Esc)" aria-label="Jeda"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg></button>
+      </div>
+    </header>
+    <section id="welcome-screen" class="lobby-layout" aria-labelledby="lobby-title">
+      <div class="lobby-identity">
+        <div class="lobby-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <span class="eyebrow">VITRAIL / SOLO</span><h1 id="lobby-title">VITRAIL<span class="title-dot">.</span></h1>
+        <p>STACK. CLEAR. REPEAT.</p>
+        <div class="lobby-controls"><span>← → geser</span><span>↑ putar</span><span>Space drop</span></div>
+      </div>
+      <nav class="mode-menu" aria-label="Pilih mode permainan">
+        <span class="eyebrow">MAIN MENU</span>
+        <button id="btn-start" class="mode-button sprint-mode"><span class="mode-number" aria-hidden="true">40</span><span><strong>40 LINES</strong><small>Hapus 40 baris secepat mungkin.</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+        <button id="btn-blitz" class="mode-button blitz-mode"><span class="mode-number" aria-hidden="true">2′</span><span><strong>BLITZ</strong><small>Dua menit. Kejar skor, combo, dan T-spin.</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+        <button id="btn-zen" class="mode-button zen-mode"><span class="mode-number" aria-hidden="true">∞</span><span><strong>ZEN</strong><small>Temukan ritmemu. Latihan tanpa batas.</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+        <button id="btn-custom" class="mode-button custom-mode"><span class="mode-number" aria-hidden="true">+</span><span><strong>CUSTOM</strong><small>Atur target, durasi, dan kecepatan.</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+        <button id="btn-roguelite" class="mode-button rogue-mode"><span class="mode-number" aria-hidden="true">R</span><span><strong>ROGUELITE</strong><small>Bangun deck. Ambil risiko. Taklukkan stage.</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+        <button id="btn-lobby-settings" class="mode-button config-mode"><span class="mode-number" aria-hidden="true">CFG</span><span><strong>PENGATURAN</strong><small>Kontrol, suara, dan tampilan.</small></span><span class="mode-arrow" aria-hidden="true">↗</span></button>
+        <p class="lobby-note">Keyboard / gamepad · Rekor disimpan di browser ini.</p>
+      </nav>
+    </section>
+    <main class="main-layout" aria-label="Permainan">
+      <aside class="panel panel-left">
+        <section class="hold-card"><div class="card-header-row"><h2 class="card-title">HOLD</h2><span class="key-hint">C / Shift</span></div><div id="hold-slots-container" class="hold-slots-container"><canvas id="hold-canvas-0" class="hold-canvas" width="120" height="90" aria-label="Balok yang disimpan"></canvas><canvas id="hold-canvas-1" class="hold-canvas hidden" width="120" height="90" aria-label="Simpanan kedua"></canvas></div></section>
+        <section class="live-stats" aria-label="Statistik permainan">
+          <div class="live-metric"><span id="hud-time-label">WAKTU</span><strong id="hud-time">0:00.000</strong></div>
+          <div class="live-metric"><span>BALOK / DETIK</span><strong><span id="hud-pieces">0</span><small id="hud-pps">0.00</small></strong></div>
+          <div class="live-metric"><span>BARIS</span><strong id="hud-lines">0</strong></div>
+          <div class="live-metric sprint-only"><span>REKOR SPRINT</span><strong id="hud-best-time">—</strong></div>
+        </section>
+        <section class="card chamber-goal-card"><h2 class="card-title">TARGET</h2><div class="goal-metric"><span id="hud-goal-desc">Hapus 40 baris</span><strong id="hud-goal-counter">0 / 40</strong></div><div class="progress-bar-rail"><div id="hud-goal-progress" class="progress-bar-fill"></div></div></section>
+      </aside>
+      <section class="playfield-wrapper">
+        <div class="board-heading"><span id="hud-mode" class="eyebrow">SPRINT 40</span><span class="board-size">10 × 20</span></div>
+        <div class="cathedral-lancet-frame"><canvas id="game-canvas" tabindex="0" aria-label="Papan Tetris. Panah untuk bergerak dan berputar, Space hard drop, C hold."></canvas><div id="game-announcements" class="announcements-overlay" role="status" aria-live="polite"></div><div id="debug-fps" class="fps-counter hidden">FPS: 60</div></div>
+        <div class="scoreboard"><div class="current-score"><span>SKOR</span><strong id="hud-score">0</strong></div><div class="best-score"><span>REKOR SKOR</span><strong id="hud-high-score">0</strong></div></div>
+        <div class="board-caption">↑ Putar · Space Drop · C Hold · Esc Jeda · R Ulang</div>
+      </section>
+      <aside class="panel panel-right">
+        <section class="next-card"><div class="card-header-row"><h2 class="card-title">NEXT</h2><span id="hud-next-count-badge" class="badge-count">5</span></div><div id="next-canvas-container" class="next-canvas-container"></div></section>
+        <section class="stats-card"><div class="stat-row roguelite-only"><span class="stat-label">Level</span><strong id="hud-level">1</strong></div><div class="stat-row"><span class="stat-label">B2B</span><strong id="hud-b2b">0</strong></div><div class="stat-row"><span class="stat-label">Combo</span><strong id="hud-combo">0</strong></div></section>
+        <section class="prism-card roguelite-only"><div class="card-header-row"><h2 class="card-title">FEVER</h2><span class="prism-multiplier">2×</span></div><div class="prism-track"><div id="prism-fill"></div></div><strong id="prism-status">0 / 12</strong><p id="prism-hint">Combo mengisi meter. Penuh = skor 2×.</p></section>
+      </aside>
+      <section class="run-details roguelite-only" aria-label="Aturan dan upgrade"><section id="modifier-card" class="modifier-card"><span class="modifier-tag">STAGE DEBUFF</span><h3 id="hud-modifier-title" class="modifier-title"></h3><p id="hud-modifier-desc" class="modifier-desc"></p></section><div class="wallet-card"><span class="eyebrow">CREDITS</span><strong id="hud-coins">$8</strong><span>Shop setiap stage<br>6 slot kartu aktif</span></div><section class="relics-inventory-card"><div class="card-header-row"><h2 class="card-title">YOUR BUILD</h2><span id="hud-relic-count" class="badge-count">0</span></div><div id="relics-list" class="relics-list-grid"><p class="empty-relic-msg">Kartu, sinergi, dan risiko. Mulai build di shop.</p></div></section></section>
+    </main>
+    <dialog id="custom-dialog" class="modal-dialog settings-dialog" aria-labelledby="custom-title">
+      <form id="custom-form"><div class="dialog-header-row"><h2 id="custom-title" class="modal-title">CUSTOM</h2><button type="button" id="btn-custom-close" class="close-x-btn" aria-label="Tutup custom">×</button></div>
+      <p class="modal-subtitle">Aturanmu, ritmemu. Nilai 0 berarti tanpa batas.</p>
+      <div class="setting-row"><label for="custom-lines">Target baris</label><input id="custom-lines" type="number" min="0" max="1000" step="1" value="40" required></div>
+      <div class="setting-row"><label for="custom-seconds">Batas waktu (detik)</label><input id="custom-seconds" type="number" min="0" max="3600" step="1" value="0" required></div>
+      <div class="setting-row"><label for="custom-level">Level gravitasi</label><input id="custom-level" type="number" min="1" max="15" step="1" value="1" required></div>
+      <div class="dialog-actions"><button class="btn btn-primary" type="submit">PLAY →</button></div></form>
+    </dialog>
+    <!-- OVERLAYS & MODALS -->
+
+    <div id="modal-relics" class="modal-backdrop shop-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title" tabindex="-1">
+      <div class="modal-dialog shop-dialog">
+        <div class="shop-heading"><div><span id="shop-round" class="eyebrow">STAGE 01</span><h2 id="shop-title" class="modal-title">RIFT MARKET<span>.</span></h2><p class="modal-subtitle">A little luck. A dangerous build.</p></div><div class="shop-balance"><span>CREDITS</span><strong id="shop-wallet">$8</strong></div></div>
+        <p id="shop-receipt" class="shop-receipt" role="status"></p>
+        <div id="relic-cards-container" class="relic-cards-grid"></div>
+        <div class="shop-tools"><button id="btn-shop-reroll" class="btn">REROLL $2</button><div><button id="btn-shop-repair" class="btn">REPAIR $5</button><small>Hapus 4 baris dasar. Tidak dihitung sebagai clear.</small></div></div>
+        <div class="shop-build-heading"><h3 class="card-title">YOUR BUILD</h3><span id="shop-slots">0 / 6</span></div>
+        <div id="shop-inventory" class="shop-inventory"></div>
+        <div class="shop-footer"><div><span class="eyebrow">NEXT STAGE</span><p id="shop-next-rule"></p></div><div class="shop-navigation"><button id="btn-shop-continue" class="btn btn-primary">PLAY STAGE →</button><button class="btn" data-home>← LOBBY</button></div></div>
+        <p class="shop-economy">Ronde +$5 + nomor stage · tiap 2.000 skor +$1 (maks. $8) · tiap $5 tabungan memberi bunga $1 (batas dasar $5). Kartu bertahan selama run.</p>
+      </div>
+    </div>
+
+    <!-- Chamber Intro Banner Overlay -->
+    <div id="overlay-chamber-intro" class="chamber-intro-overlay hidden">
+      <div class="intro-box">
+        <div class="intro-chamber-num" id="intro-chamber-label">BERSIAP</div>
+        <h2 class="intro-title" id="intro-chamber-title">Stage 1</h2>
+        <div class="intro-goal" id="intro-chamber-goal">Hapus 10 baris</div>
+        <div class="intro-affliction" id="intro-chamber-affliction">
+          <span class="affliction-tag">AFFLICTION</span>
+          <span class="affliction-text" id="intro-chamber-affliction-text">None</span>
+        </div>
+        <div class="intro-countdown" id="intro-countdown">3</div>
+      </div>
+    </div>
+
+    <!-- Pause Modal -->
+    <div id="modal-pause" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Jeda" tabindex="-1">
+      <div class="modal-dialog small-dialog">
+        <h2 class="modal-title">Jeda</h2>
+        <div class="dialog-actions">
+          <button id="btn-resume" class="btn btn-primary">Lanjut [Esc]</button>
+          <button id="btn-pause-settings" class="btn btn-secondary">Pengaturan</button>
+          <button id="btn-pause-restart" class="btn btn-danger">Ulang [R]</button><button class="btn btn-secondary" data-home>Kembali ke lobby</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Game Over / Run Summary Modal -->
+    <div id="modal-gameover" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="gameover-title" tabindex="-1">
+      <div class="modal-dialog run-summary-dialog">
+        <div class="cathedral-rose-header">
+          <div class="rose-window-icon broken">✠</div>
+          <h2 class="modal-title" id="gameover-title">Permainan selesai</h2>
+          <p class="modal-subtitle" id="gameover-subtitle">Coba lagi untuk melewati rekor.</p>
+        </div>
+        <div class="summary-stats-grid"><div class="summary-metric"><span class="metric-label">Waktu</span><strong id="summary-time" class="metric-value">0:00.000</strong></div><div class="summary-metric"><span class="metric-label">Balok</span><strong id="summary-pieces" class="metric-value">0</strong></div><div class="summary-metric sprint-only"><span class="metric-label">Rekor Sprint</span><strong id="summary-best" class="metric-value">—</strong></div>
+          <div class="summary-metric">
+            <span class="metric-label score-mode-only">Skor</span>
+            <span id="summary-score" class="metric-value highlight score-mode-only">0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label roguelite-only">Stage selesai</span>
+            <span id="summary-stages" class="metric-value roguelite-only">0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">Baris</span>
+            <span id="summary-lines" class="metric-value">0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">T-spin</span>
+            <span id="summary-tspins" class="metric-value">0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">Clear 4 baris</span>
+            <span id="summary-tetrises" class="metric-value">0</span>
+          </div>
+          <div class="summary-metric">
+            <span class="metric-label">Combo tertinggi</span>
+            <span id="summary-maxcombo" class="metric-value">0</span>
+          </div>
+        </div>
+
+        <div class="summary-relics-section roguelite-only">
+          <h3 class="section-title">Upgrade terkumpul</h3>
+          <div id="summary-relics-list" class="summary-relics-grid">
+            <!-- Rendered list of relics collected in run -->
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button id="btn-restart-run" class="btn btn-primary">Main lagi</button><button class="btn btn-secondary" data-home>Kembali ke lobby</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pengaturan & Accessibility Modal -->
+    <div id="modal-settings" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-label="Pengaturan" tabindex="-1">
+      <div class="modal-dialog settings-dialog">
+        <div class="dialog-header-row">
+          <h2 class="modal-title">Pengaturan</h2>
+          <button id="btn-close-settings" class="close-x-btn" aria-label="Tutup pengaturan">&times;</button>
+        </div>
+        <div class="settings-content">
+          <!-- Audio Pengaturan -->
+          <fieldset class="settings-group">
+            <legend>Audio</legend>
+            <div class="setting-row">
+              <label for="cfg-sfx-vol">Volume efek suara</label>
+              <input type="range" id="cfg-sfx-vol" min="0" max="1" step="0.05" value="0.7">
+              <span id="val-sfx-vol">70%</span>
+            </div>
+<div class="setting-row"><label for="cfg-sfx-pack">Paket efek suara</label><select id="cfg-sfx-pack"><option value="arcade">Vitrail Arcade</option><option value="blockblast">Block Blast</option></select></div>
+            <div class="setting-row">
+              <label for="cfg-tts-mode">Narator</label>
+              <select id="cfg-tts-mode">
+                <option value="kitten_tts">KittenTTS · combo saja</option>
+                <option value="procedural" selected>Mati · efek suara saja</option>
+                <option value="speech_synth">Suara browser</option>
+              </select>
+            </div>
+            <p id="audio-status" class="settings-note" role="status">Vitrail Arcade · Audio aktif setelah interaksi pertama.</p><button id="btn-voice-preview" class="btn btn-secondary">Tes suara combo</button>
+          </fieldset>
+
+          <!-- Handling Pengaturan (DAS / ARR) -->
+          <fieldset class="settings-group">
+            <legend>Kontrol</legend>
+          <button id="btn-fast-controls" class="btn" type="button">Preset cepat · DAS 100 / ARR 0 / SDF ∞</button>
+            <div class="setting-row">
+              <label for="cfg-das">DAS (Delayed Auto Shift)</label>
+              <input type="range" id="cfg-das" min="16.6667" max="333.3333" step="any" value="100">
+              <span id="val-das">100 ms</span>
+            </div>
+            <div class="setting-row">
+              <label for="cfg-arr">ARR (Auto Repeat Rate)</label>
+              <input type="range" id="cfg-arr" min="0" max="83.3333" step="any" value="0">
+              <span id="val-arr">0 ms · instan</span>
+            </div>
+            <div class="setting-row"><label for="cfg-dcd">DCD (DAS Cut Delay)</label><input type="range" id="cfg-dcd" min="0" max="333.3333" step="any" value="0"><span id="val-dcd">0 ms</span></div>
+            <p class="settings-note">DAS menunggu sebelum geser berulang. ARR 0 langsung ke dinding. DCD menunda geser otomatis setelah putar/drop.</p>
+            <div class="setting-row"><label for="cfg-cancel-das">Reset DAS saat berganti arah</label><input type="checkbox" id="cfg-cancel-das" checked></div>
+            <div class="setting-row"><label for="cfg-initial">IRS / IHS · tahan putar/hold saat countdown</label><input type="checkbox" id="cfg-initial" checked></div>
+            <div class="setting-row">
+              <label for="cfg-softdrop">Soft Drop Factor</label>
+              <input type="range" id="cfg-softdrop" min="5" max="41" step="1" value="41">
+              <span id="val-softdrop">∞</span>
+            </div>
+          </fieldset>
+
+          <!-- Visuals & Shake -->
+          <fieldset class="settings-group">
+            <legend>Tampilan</legend>
+            <div class="setting-row">
+              <label for="cfg-screenshake">Getaran saat impact</label>
+              <input type="checkbox" id="cfg-screenshake" checked>
+            </div>
+            <div class="setting-row">
+              <label for="cfg-ghostpiece">Bayangan posisi jatuh</label>
+              <input type="checkbox" id="cfg-ghostpiece" checked>
+            </div>
+            <div class="setting-row">
+              <label for="cfg-particles">Partikel</label>
+              <input type="checkbox" id="cfg-particles" checked>
+            </div>
+          </fieldset>
+        </div>
+        <div class="dialog-actions">
+          <button id="btn-save-settings" class="btn btn-primary">Simpan</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "stained-glass-tetris-roguelite",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "test": "vitest run --exclude .tmp/**"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vite": "^6.2.0",
+    "vitest": "^5.0.5"
+  }
+}
