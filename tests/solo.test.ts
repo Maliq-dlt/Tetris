@@ -7,16 +7,20 @@ import { detectTSpin } from '../src/core/tspin';
 import { SfxPlayer } from '../src/audio/sfxPlayer';
 import type { GameSettings } from '../src/core/types';
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 const settings: GameSettings = { das: 100, arr: 0, dcd: 50, softDropMultiplier: 41,
   sfxVolume: .7, ttsMode: 'procedural', screenShake: true, ghostPiece: true, particles: true };
 function inputFixture(cancelDas = true) {
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
   const listeners = new Map<string, ((e: unknown) => void)[]>();
   vi.stubGlobal('window', { addEventListener: (type: string, fn: (e: unknown) => void) => listeners.set(type, [...listeners.get(type) ?? [], fn]) });
   vi.stubGlobal('navigator', { getGamepads: () => [] });
   const input = new InputHandler({ ...settings, cancelDas });
   const key = (type: string, code: string) => listeners.get(type)?.forEach(fn => fn({ code, target: null, preventDefault() {} }));
-  return { input, key };
+  const elapse = (ms: number) => { now += ms; };
+  const advance = (ms: number) => { elapse(ms); input.update(); };
+  return { input, key, advance, elapse };
 }
 
 describe('solo rules', () => {
@@ -60,23 +64,32 @@ describe('solo rules', () => {
 });
 
 describe('handling extensions', () => {
+  it('starts DCD at manipulation time without counting time before it', () => {
+    const { input, key, advance, elapse } = inputFixture();
+    key('keydown', 'ArrowLeft');
+    advance(100); input.consumeHorizontalShift();
+    elapse(20); input.delayAutoShift();
+    for (let tick = 0; tick < 6; tick++) input.update();
+    advance(49); expect(input.consumeHorizontalShift()).toBe(0);
+    advance(2); expect(input.consumeHorizontalShift()).toBe(-10);
+  });
   it('DCD pauses charged ARR without losing DAS; a fresh tap remains immediate', () => {
-    const { input, key } = inputFixture(); key('keydown', 'ArrowLeft');
-    input.consumeHorizontalShift(); input.update(100); expect(input.consumeHorizontalShift()).toBe(-10);
-    input.delayAutoShift(); input.update(49); expect(input.consumeHorizontalShift()).toBe(0);
-    input.update(2); expect(input.consumeHorizontalShift()).toBe(-10);
+    const { input, key, advance } = inputFixture(); key('keydown', 'ArrowLeft');
+    input.consumeHorizontalShift(); advance(100); expect(input.consumeHorizontalShift()).toBe(-10);
+    input.delayAutoShift(); advance(49); expect(input.consumeHorizontalShift()).toBe(0);
+    advance(2); expect(input.consumeHorizontalShift()).toBe(-10);
     input.delayAutoShift(); key('keydown', 'ArrowRight'); expect(input.consumeHorizontalShift()).toBe(1);
-    input.update(50); expect(input.consumeHorizontalShift()).toBe(0);
+    advance(50); expect(input.consumeHorizontalShift()).toBe(0);
   });
   it('supports direction-change DAS carry and held countdown actions', () => {
-    const { input, key } = inputFixture(false); key('keydown', 'ArrowLeft'); input.update(100);
+    const { input, key, advance } = inputFixture(false); key('keydown', 'ArrowLeft'); advance(100);
     input.consumeHorizontalShift(); key('keydown', 'ArrowRight'); input.consumeHorizontalShift();
-    input.update(1); expect(input.consumeHorizontalShift()).toBe(10);
+    advance(1); expect(input.consumeHorizontalShift()).toBe(10);
     key('keydown', 'KeyC'); key('keydown', 'KeyZ'); input.clearActions();
     expect(input.initialActions()).toEqual({ hold: true, rotation: 'ccw' });
     key('keyup', 'KeyC'); key('keyup', 'KeyZ');
     expect(input.initialActions()).toEqual({ hold: false, rotation: null });
-    input.reset(); input.update(100); expect(input.consumeHorizontalShift()).toBe(0);
+    input.reset(); advance(100); expect(input.consumeHorizontalShift()).toBe(0);
   });
   it('kicks 180 at the wall, rejects blocked rotations, and preserves the original piece', () => {
     const board = new Board(), piece = createPiece('T'); piece.rotation = 1; piece.x = -1; piece.y = 10;

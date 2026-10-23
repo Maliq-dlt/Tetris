@@ -13,9 +13,11 @@ import { formatTime } from '../src/ui/uiManager';
 const settings: GameSettings = { das: 100, arr: 0, softDropMultiplier: 40, sfxVolume: .7,
   ttsMode: 'procedural', screenShake: true, ghostPiece: true, particles: true };
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 function inputFixture(arr = 0) {
+  let now = 0;
+  vi.spyOn(performance, 'now').mockImplementation(() => now);
   const listeners = new Map<string, ((event: unknown) => void)[]>();
   vi.stubGlobal('window', { addEventListener: (type: string, fn: (event: unknown) => void) => {
     listeners.set(type, [...(listeners.get(type) ?? []), fn]);
@@ -25,31 +27,72 @@ function inputFixture(arr = 0) {
   const key = (type: string, code: string, repeat = false) => {
     for (const fn of listeners.get(type) ?? []) fn({ code, repeat, target: null, preventDefault() {} });
   };
-  return { input, key };
+  const advance = (ms: number) => { now += ms; input.update(); };
+  return { input, key, advance };
 }
 
 describe('fast handling regressions', () => {
-  it('ignores OS repeat and moves to the wall at ARR zero after DAS', () => {
-    const { input, key } = inputFixture();
+  it('does not charge a fresh tap with catch-up ticks from before the key press', () => {
+    const { input, key, advance } = inputFixture();
+    advance(100); // Frame time elapsed before this new press.
     key('keydown', 'ArrowRight');
     expect(input.consumeHorizontalShift()).toBe(1);
-    input.update(60);
+    for (let tick = 0; tick < 6; tick++) input.update();
+    expect(input.consumeHorizontalShift()).toBe(0);
+    advance(30);
+    expect(input.consumeHorizontalShift()).toBe(0);
+    key('keyup', 'ArrowRight');
+    advance(100);
+    expect(input.consumeHorizontalShift()).toBe(0);
+  });
+  it('resets the hold delay for rapid direction changes and repeated taps', () => {
+    const { input, key, advance } = inputFixture();
+    let previous = 'ArrowLeft';
+    key('keydown', previous);
+    input.consumeHorizontalShift();
+    advance(100);
+    expect(input.consumeHorizontalShift()).toBe(-10);
+    for (let i = 0; i < 12; i++) {
+      const code = i % 2 === 0 ? 'ArrowRight' : 'ArrowLeft';
+      const direction = i % 2 === 0 ? 1 : -1;
+      key('keydown', code);
+      key('keyup', previous);
+      expect(input.consumeHorizontalShift()).toBe(direction);
+      advance(20);
+      for (let tick = 0; tick < 6; tick++) input.update();
+      expect(input.consumeHorizontalShift()).toBe(0);
+      previous = code;
+    }
+    key('keyup', previous);
+    for (let i = 0; i < 6; i++) {
+      key('keydown', 'ArrowRight');
+      expect(input.consumeHorizontalShift()).toBe(1);
+      advance(20);
+      expect(input.consumeHorizontalShift()).toBe(0);
+      key('keyup', 'ArrowRight');
+    }
+  });
+  it('ignores OS repeat and moves to the wall at ARR zero after DAS', () => {
+    const { input, key, advance } = inputFixture();
+    key('keydown', 'ArrowRight');
+    expect(input.consumeHorizontalShift()).toBe(1);
+    advance(60);
     expect(input.consumeHorizontalShift()).toBe(0);
     key('keydown', 'ArrowRight', true);
-    input.update(40);
+    advance(40);
     expect(input.consumeHorizontalShift()).toBe(10);
     key('keyup', 'ArrowRight');
-    input.update(100);
+    advance(100);
     expect(input.consumeHorizontalShift()).toBe(0);
   });
   it('preserves multiple ARR repeats in one update and resets queued motion', () => {
-    const { input, key } = inputFixture(10);
+    const { input, key, advance } = inputFixture(10);
     key('keydown', 'ArrowLeft');
     expect(input.consumeHorizontalShift()).toBe(-1);
-    input.update(150);
+    advance(150);
     expect(input.consumeHorizontalShift()).toBe(-6);
     input.reset();
-    input.update(150);
+    advance(150);
     expect(input.consumeHorizontalShift()).toBe(0);
   });
   it('resumes the opposite held direction when the newest direction is released', () => {
@@ -60,14 +103,26 @@ describe('fast handling regressions', () => {
     key('keyup', 'ArrowRight');
     expect(input.consumeHorizontalShift()).toBe(-1);
   });
+  it('starts gamepad DAS when the press is detected, excluding the previous frame', () => {
+    const { input, advance } = inputFixture();
+    const pad = { buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: i === 15 })) };
+    vi.stubGlobal('navigator', { getGamepads: () => [pad] });
+    advance(100);
+    expect(input.consumeHorizontalShift()).toBe(1);
+    for (let tick = 0; tick < 6; tick++) input.update();
+    advance(99); expect(input.consumeHorizontalShift()).toBe(0);
+    advance(1); expect(input.consumeHorizontalShift()).toBe(10);
+    vi.stubGlobal('navigator', { getGamepads: () => [] });
+    advance(100); expect(input.consumeHorizontalShift()).toBe(0);
+  });
   it('reads gamepad soft drop and clears it after disconnect', () => {
     const pad = { buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: i === 13 })) };
-    const { input } = inputFixture();
+    const { input, advance } = inputFixture();
     vi.stubGlobal('navigator', { getGamepads: () => [pad] });
-    input.update(16);
+    advance(16);
     expect(input.isSoftDropActive()).toBe(true);
     vi.stubGlobal('navigator', { getGamepads: () => [] });
-    input.update(16);
+    advance(16);
     expect(input.isSoftDropActive()).toBe(false);
   });
 });
@@ -226,10 +281,10 @@ describe('roguelite market and build lifecycle', () => {
   });
   it('applies the timing downside of control cards', () => {
     const run = new RunManager(); run.addRelic(card('rose_medallion'));
-    const { input, key } = inputFixture(); input.dasModifier = run.getEffectiveDasModifier();
+    const { input, key, advance } = inputFixture(); input.dasModifier = run.getEffectiveDasModifier();
     key('keydown', 'ArrowRight'); input.consumeHorizontalShift();
-    input.update(100); expect(input.consumeHorizontalShift()).toBe(0);
-    input.update(35); expect(input.consumeHorizontalShift()).toBe(10);
+    advance(100); expect(input.consumeHorizontalShift()).toBe(0);
+    advance(35); expect(input.consumeHorizontalShift()).toBe(10);
     expect(run.getEffectiveLockDelay()).toBe(750);
   });
 });

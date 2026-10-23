@@ -447,7 +447,7 @@ class VitrailGame {
 
   private update(dtMs: number): void {
     const dtSeconds = dtMs / 1000;
-    this.input.update(dtMs);
+    this.input.update();
 
     if (!document.getElementById('modal-settings')!.classList.contains('hidden')) {
       if (this.input.consumeAction('pause')) document.getElementById('btn-close-settings')!.click();

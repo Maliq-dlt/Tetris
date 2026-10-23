@@ -35,6 +35,7 @@ export class InputHandler {
   private dasTimer = 0;
   private arrTimer = 0;
   private cutTimer = 0;
+  private lastMoveTime = 0;
 
   // Key repeat prevention for instant actions
   private pressedActions: Set<InputAction> = new Set();
@@ -125,12 +126,14 @@ export class InputHandler {
       this.arrTimer = 0;
     }
     this.cutTimer = 0;
+    this.lastMoveTime = performance.now();
     // Initial tap shift immediately
     this.horizontalShift = dir === 'left' ? -1 : 1;
   }
 
   public delayAutoShift(): void {
     this.cutTimer = Math.max(0, this.settings.dcd ?? 0);
+    this.lastMoveTime = performance.now();
     this.horizontalShift = 0;
   }
 
@@ -184,13 +187,16 @@ export class InputHandler {
   }
 
   /**
-   * Called on every 60 Hz logic tick to update DAS / ARR and gamepad
+   * Poll each logic tick, but charge DAS / ARR only with real time since the press.
    */
-  public update(dtMs: number): void {
+  public update(): void {
     // 1. Update Gamepad inputs
     this.pollGamepad();
 
     if (!this.activeMoveDirection) return;
+    const now = performance.now();
+    let dtMs = Math.max(0, now - this.lastMoveTime);
+    this.lastMoveTime = now;
     if (this.cutTimer > 0) {
       const blocked = Math.min(this.cutTimer, dtMs);
       this.cutTimer -= blocked;
